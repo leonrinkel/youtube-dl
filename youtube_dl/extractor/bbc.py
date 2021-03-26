@@ -1000,35 +1000,51 @@ class BBCIE(BBCCoUkIE):
             }
 
         # bbc reel (e.g. https://www.bbc.com/reel/video/p07c6sb6/how-positive-thinking-is-harming-your-happiness)
+        # playlist pages have a current video (first in the list), plus links to the other videos
         initial_data = self._parse_json(self._html_search_regex(
             r'<script[^>]+id=(["\'])initial-data\1[^>]+data-json=(["\'])(?P<json>(?:(?!\2).)+)',
             webpage, 'initial data', default='{}', group='json'), playlist_id, fatal=False)
         if initial_data:
-            init_data = try_get(
-                initial_data, lambda x: x['initData']['items'][0], dict) or {}
-            smp_data = init_data.get('smpData') or {}
-            clip_data = try_get(smp_data, lambda x: x['items'][0], dict) or {}
-            version_id = clip_data.get('versionID')
-            if version_id:
-                title = smp_data['title']
-                formats, subtitles = self._download_media_selector(version_id)
-                self._sort_formats(formats)
-                image_url = smp_data.get('holdingImageURL')
-                display_date = init_data.get('displayDate')
-                topic_title = init_data.get('topicTitle')
+            init_items = try_get(initial_data, lambda x: x['initData']['items'], list)
+            # --no-playlist: only return the first video
+            noplaylist = self._downloader.params.get('noplaylist')
+            for item in init_items:
+                smp_data = try_get(item, lambda x: x['smpData'])
+                if not smp_data:
+                    continue
+                entry = None
+                clip_data = try_get(smp_data, lambda x: x['items'][0], dict) or {}
+                version_id = clip_data.get('versionID')
+                if version_id:
+                    title = smp_data['title']
+                    formats, subtitles = self._download_media_selector(version_id)
+                    self._sort_formats(formats)
+                    image_url = smp_data.get('holdingImageURL')
+                    display_date = item.get('displayDate')
+                    topic_title = item.get('topicTitle')
 
-                return {
-                    'id': version_id,
-                    'title': title,
-                    'formats': formats,
-                    'alt_title': init_data.get('shortTitle'),
-                    'thumbnail': image_url.replace('$recipe', 'raw') if image_url else None,
-                    'description': smp_data.get('summary') or init_data.get('shortSummary'),
-                    'upload_date': display_date.replace('-', '') if display_date else None,
-                    'subtitles': subtitles,
-                    'duration': int_or_none(clip_data.get('duration')),
-                    'categories': [topic_title] if topic_title else None,
-                }
+                    entry = {
+                        'id': version_id,
+                        'title': title,
+                        'formats': formats,
+                        'alt_title': item.get('shortTitle'),
+                        'thumbnail': image_url.replace('$recipe', 'raw') if image_url else None,
+                        'description': smp_data.get('summary') or item.get('shortSummary'),
+                        'upload_date': display_date.replace('-', '') if display_date else None,
+                        'subtitles': subtitles,
+                        'duration': int_or_none(clip_data.get('duration')),
+                        'categories': [topic_title] if topic_title else None,
+                    }
+                if entry: 
+                    if noplaylist:
+                        return entry
+                    entries.append(entry)
+
+        if entries:
+            initial_data = initial_data['initData']
+            title = initial_data.get('title')
+            description = initial_data.get('summary')
+            return self.playlist_result(entries, playlist_id, title, description)
 
         # Morph based embed (e.g. http://www.bbc.co.uk/sport/live/olympics/36895975)
         # There are several setPayload calls may be present but the video
