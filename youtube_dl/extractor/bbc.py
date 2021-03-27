@@ -11,6 +11,7 @@ from ..compat import (
     compat_etree_Element,
     compat_HTTPError,
     compat_parse_qs,
+    compat_str,
     compat_urllib_parse_urlparse,
     compat_urlparse,
 )
@@ -802,6 +803,17 @@ class BBCIE(BBCCoUkIE):
         # BBC Reel
         'url': 'https://www.bbc.com/reel/video/p07c6sb6/how-positive-thinking-is-harming-your-happiness',
         'info_dict': {
+            'id': 'mind-matters',
+            'title': 'Mind Matters',
+            'description': 'Uncovering the mysteries of our minds and the importance of mental health and well-being.',
+            'duration': 3083,
+            'upload_date': '20181214',
+        },
+        'playlist_count': 13,
+    }, {
+        # BBC Reel playlist and video => video
+        'url': 'https://www.bbc.com/reel/video/p07c6sb6/how-positive-thinking-is-harming-your-happiness',
+        'info_dict': {
             'id': 'p07c6sb9',
             'ext': 'mp4',
             'title': 'How positive thinking is harming your happiness',
@@ -811,6 +823,64 @@ class BBCIE(BBCCoUkIE):
             'thumbnail': r're:https?://.+/p07c9dsr.jpg',
             'upload_date': '20190604',
             'categories': ['Psychology'],
+        },
+        'params': {
+            'no-playlist': True,
+        },
+    }, {
+        # BBC Reel video and playlist => video
+        'url': 'https://www.bbc.com/reel/video/p099tghy/is-phrenology-the-weirdest-pseudoscience-of-them-all-',
+        'info_dict': {
+            'id': 'p07c6sb9',
+            'ext': 'mp4',
+            'title': 'How positive thinking is harming your happiness',
+            'alt_title': 'The downsides of positive thinking',
+            'description': 'md5:fad74b31da60d83b8265954ee42d85b4',
+            'duration': 235,
+            'thumbnail': r're:https?://.+/p07c9dsr.jpg',
+            'upload_date': '20190604',
+            'categories': ['Psychology'],
+        },
+    }, {
+        # BBC Reel playlist and video => playlist
+        'url': 'https://www.bbc.com/reel/video/p07c6sb6/how-positive-thinking-is-harming-your-happiness',
+        'info_dict': {
+            'id': 'mind-matters',
+            'title': 'Mind Matters',
+            'description': 'Uncovering the mysteries of our minds and the importance of mental health and well-being.',
+            'duration': 3083,
+            'upload_date': '20181214',
+        },
+        'playlist_count': 13,
+        'params': {
+            'no-playlist': False,
+        },
+    }, {
+        # BBC Reel specified video and playlist => video
+        'url': 'https://www.bbc.com/reel/playlist/mind-matters?vpid=p0962h5x',
+        'info_dict': {
+            'id': 'p095rkvg',
+            'ext': 'mp4',
+            'title': 'Can you really have a \'photographic\' memory?',
+            'alt_title': 'Why your memory is not like a camera',
+            'description': 'md5:00000000000000000000000000000000',
+            'duration': 211,
+            'thumbnail': r're:https?://.+/p095rrbz.jpg',
+            'upload_date': '20210202',
+            'categories': ['Neuroscience'],
+        },
+    }, {
+        # BBC Reel specified video and playlist => playlist
+        'info_dict': {
+            'id': 'mind-matters',
+            'title': 'Mind Matters',
+            'description': 'Uncovering the mysteries of our minds and the importance of mental health and well-being.',
+            'duration': 3083,
+            'upload_date': '20181214',
+        },
+        'playlist_count': 13,
+        'params': {
+            'no-playlist': False,
         },
     }]
 
@@ -1005,9 +1075,28 @@ class BBCIE(BBCCoUkIE):
             r'<script[^>]+id=(["\'])initial-data\1[^>]+data-json=(["\'])(?P<json>(?:(?!\2).)+)',
             webpage, 'initial data', default='{}', group='json'), playlist_id, fatal=False)
         if initial_data:
-            init_items = try_get(initial_data, lambda x: x['initData']['items'], list)
-            # --no-playlist: only return the first video
+            init_items = try_get(
+                initial_data, lambda x: x['initData']['items'], list) or []
+            # Reel pages may have an active video and a playlist as well
+            # If the URL implies playlist, let --no-playlist select the video
+            # If the URL implies video (includes a PID string other than 'playlist'),
+            # let --yes-playlist select the playlist
+            # If the URL has parameter vpid set in the query string, treat it as 
+            # implying a video and find that exact versionID in the playlist
             noplaylist = self._downloader.params.get('noplaylist')
+            qs = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
+            vpid = try_get(qs, lambda x: x['vpid'][0], compat_str)                                
+            single_pid = vpid or \
+                re.search(r'[/=](!playlist\b)%s\b' % self._ID_REGEX, url)
+            if len(init_items) > 1:
+                if noplaylist and not single_pid:
+                    self.to_screen('Downloading single video because of --no-playlist')
+                elif noplaylist == False and single_pid:
+                    self.to_screen('Downloading playlist because of --yes-playlist')
+            if noplaylist is None:
+                noplaylist = single_pid
+            elif vpid and not noplaylist:
+                vpid = None
             for item in init_items:
                 smp_data = try_get(item, lambda x: x['smpData'])
                 if not smp_data:
@@ -1016,6 +1105,8 @@ class BBCIE(BBCCoUkIE):
                 clip_data = try_get(smp_data, lambda x: x['items'][0], dict) or {}
                 version_id = clip_data.get('versionID')
                 if version_id:
+                    if vpid and vpid != version_id:
+                        continue
                     title = smp_data['title']
                     formats, subtitles = self._download_media_selector(version_id)
                     self._sort_formats(formats)
