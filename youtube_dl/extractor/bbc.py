@@ -1108,8 +1108,8 @@ class BBCIE(BBCCoUkIE):
                     'subtitles': subtitles,
                     'thumbnail': re.sub(r'(\{width}xn|\$recipe)', 'raw', image_url) if image_url else None,
                     'duration':  parse_duration(dict_get(body_media, ('duration', 'durationSeconds'))),
-                    'description': try_get(body_media, lambda x: x['promos']['summary'], compat_str) or \
-                        body_media.get('summary') or \
+                    'description': try_get(body_media, lambda x: x['promos']['summary'], compat_str) or 
+                        body_media.get('summary') or
                         self._html_search_meta('description', webpage),
                     'timestamp': parse_iso8601(dict_get(body_media, ('dateTime', 'lastUpdated'))),
                 }
@@ -1142,15 +1142,15 @@ class BBCIE(BBCCoUkIE):
                         'formats': formats,
                         'subtitles': subtitles,
                         'thumbnail': dict_get(component, ('iChefImage', 'image')),
-                        'duration':  parse_duration(component.get('duration')),
+                        'duration': parse_duration(component.get('duration')),
                         'description': component.get('caption'),
                     })
             if entries:
                 return self.playlist_result(
                     entries,
                     playlist_id,
-	            playlist_title,
-	            playlist_description)
+                    playlist_title,
+                    playlist_description)
 
         preload_state = self._parse_json(self._search_regex(
             r'window\.__PRELOADED_STATE__\s*=\s*({.+?});', webpage,
