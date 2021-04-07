@@ -1452,7 +1452,7 @@ class BBCCoUkIPlayerEpisodesIE(BBCCoUkIPlayerPlaylistBaseIE):
 
     @staticmethod
     def _get_elements(data):
-        return data['entities']['results']
+        return try_get(data, lambda x: x['entities']['results'], list) or []
 
     @staticmethod
     def _get_episode(element):
@@ -1524,7 +1524,7 @@ class BBCCoUkIPlayerGroupIE(BBCCoUkIPlayerPlaylistBaseIE):
 
     @staticmethod
     def _get_elements(data):
-        return data['elements']
+        return try_get(data, lambda x: x['elements'], list) or []
 
     @staticmethod
     def _get_episode(element):
@@ -1540,7 +1540,7 @@ class BBCCoUkIPlayerGroupIE(BBCCoUkIPlayerPlaylistBaseIE):
 
     @staticmethod
     def _get_playlist_data(data):
-        return data['group']
+        return try_get(data, lambda x: x['group'], dict) or {}
 
     def _get_playlist_title(self, data):
         return data.get('title')
