@@ -1406,7 +1406,7 @@ class BBCCoUkIPlayerEpisodesIE(BBCCoUkIPlayerPlaylistBaseIE):
         'playlist_mincount': 8,
     }, {
         # all seasons
-        'url': 'https://www.bbc.co.uk/iplayer/episodes/b094m5t9/doctor-foster',
+        'url': 'http://www.bbc.co.uk/iplayer/episodes/b094m5t9/doctor-foster',
         'info_dict': {
             'id': 'b094m5t9',
             'title': 'Doctor Foster',
@@ -1415,7 +1415,7 @@ class BBCCoUkIPlayerEpisodesIE(BBCCoUkIPlayerPlaylistBaseIE):
         'playlist_mincount': 10,
     }, {
         # explicit season
-        'url': 'https://www.bbc.co.uk/iplayer/episodes/b094m5t9/doctor-foster?seriesId=b094m6nv',
+        'url': 'http://www.bbc.co.uk/iplayer/episodes/b094m5t9/doctor-foster?seriesId=b094m6nv',
         'info_dict': {
             'id': 'b094m5t9',
             'title': 'Doctor Foster',
@@ -1430,14 +1430,14 @@ class BBCCoUkIPlayerEpisodesIE(BBCCoUkIPlayerPlaylistBaseIE):
             'title': 'Beechgrove',
             'description': 'Gardening show that celebrates Scottish horticulture and growing conditions.',
         },
-        'playlist_mincount': 37,
+        'playlist_mincount': 36,
     }, {
         # explicit page
-        'url': 'https://www.bbc.co.uk/iplayer/episodes/m0004c4v/beechgrove?page=2',
+        'url': 'http://www.bbc.co.uk/iplayer/episodes/b006mw1h/gardeners-world?page=2',
         'info_dict': {
-            'id': 'm0004c4v',
-            'title': 'Beechgrove',
-            'description': 'Gardening show that celebrates Scottish horticulture and growing conditions.',
+            'id': 'm000h3gq',
+            'title': 'Gardeners' World - 2020: Episode 4',
+            'description': 'md5:01234567890123456789012345678901',
         },
         'playlist_mincount': 1,
     }]
