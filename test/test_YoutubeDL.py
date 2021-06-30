@@ -1007,8 +1007,18 @@ class TestYoutubeDL(unittest.TestCase):
         ydl = YDL({'format': 'bestvideo+bestaudio'})
         ydl.process_ie_result(info_dict.copy())
         downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format'], 'vid - unknown (video)+aud - audio only (audio)')
+        self.assertEqual(downloaded['format_id'], 'vid+aud')
         self.assertEqual(downloaded['format_note'], 'video+audio')
+        
+        del formats[0]['format_note']
 
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestvideo+bestaudio'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_note'], 'audio')
 
 if __name__ == '__main__':
     unittest.main()

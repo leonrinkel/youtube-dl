@@ -1375,10 +1375,8 @@ class YoutubeDL(object):
 
                     return {
                         'requested_formats': formats_info,
-                        'format': '%s+%s' % (formats_info[0].get('format'),
-                                             formats_info[1].get('format')),
-                        'format_id': '%s+%s' % (formats_info[0].get('format_id'),
-                                                formats_info[1].get('format_id')),
+                        'format': merge_formats_info('format'),
+                        'format_id': merge_formats_info('format_id'),
                         'width': formats_info[0].get('width'),
                         'height': formats_info[0].get('height'),
                         'resolution': formats_info[0].get('resolution'),
