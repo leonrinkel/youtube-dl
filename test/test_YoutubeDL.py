@@ -997,6 +997,18 @@ class TestYoutubeDL(unittest.TestCase):
         self.assertEqual(downloaded['extractor'], 'Video')
         self.assertEqual(downloaded['extractor_key'], 'Video')
 
+    def test_merge_format_fields(self):
+        formats = [
+            {'format_id': 'vid', 'ext': 'mp4', 'acodec': 'none', 'format_note': 'video', 'url': TEST_URL},
+            {'format_id': 'aud', 'ext': 'm4a', 'vcodec': 'none', 'format_note': 'audio', 'url': TEST_URL},
+        ]
+        info_dict = _make_result(formats)
+
+        ydl = YDL({'format': 'bestvideo+bestaudio'})
+        ydl.process_ie_result(info_dict.copy())
+        downloaded = ydl.downloaded_info_dicts[0]
+        self.assertEqual(downloaded['format_note'], 'video+audio')
+
 
 if __name__ == '__main__':
     unittest.main()

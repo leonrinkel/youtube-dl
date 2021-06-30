@@ -1368,6 +1368,11 @@ class YoutubeDL(object):
                         formats_info[0]['ext']
                         if self.params.get('merge_output_format') is None
                         else self.params['merge_output_format'])
+
+                    def merge_formats_info(key, separator='+'):
+                        return separator.join(
+                            v.get(key) for v in formats_info if v.get(key))
+
                     return {
                         'requested_formats': formats_info,
                         'format': '%s+%s' % (formats_info[0].get('format'),
@@ -1377,6 +1382,7 @@ class YoutubeDL(object):
                         'width': formats_info[0].get('width'),
                         'height': formats_info[0].get('height'),
                         'resolution': formats_info[0].get('resolution'),
+                        'format_note': merge_formats_info('format_note'),
                         'fps': formats_info[0].get('fps'),
                         'vcodec': formats_info[0].get('vcodec'),
                         'vbr': formats_info[0].get('vbr'),
