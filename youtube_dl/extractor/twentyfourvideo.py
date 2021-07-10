@@ -17,29 +17,30 @@ class TwentyFourVideoIE(InfoExtractor):
     _VALID_URL = r'''(?x)
                     https?://
                         (?P<host>
-                            (?:(?:www|porno?)\.)?24video\.
-                            (?:net|me|xxx|sexy?|tube|adult|site|vip)
+                            (?:(?:www|porno?|sexy?|m)\.)?24video\.
+                            (?:net|me|xxx|sexy?|tube|adult|site|vip|in)
                         )/
                         (?:
                             video/(?:(?:view|xml)/)?|
                             player/new24_play\.swf\?id=
                         )
-                        (?P<id>\d+)
+                        (?P<id>\d+)(?:-[^/#??]+)?
                     '''
+    _GEO_COUNTRIES = ['PK']
 
     _TESTS = [{
         'url': 'http://www.24video.net/video/view/1044982',
-        'md5': 'e09fc0901d9eaeedac872f154931deeb',
+        'md5': 'e89197aaffcdb28e16de3acb7b53ae36',
         'info_dict': {
             'id': '1044982',
             'ext': 'mp4',
-            'title': 'Эротика каменного века',
-            'description': 'Как смотрели порно в каменном веке.',
+            'title': 'Эротика с Сашей',
+            'description': 'Смотрите порно видео Эротика с горячей девушкой (18 лет) онлайн бесплатно на 24video.net!',
             'thumbnail': r're:^https?://.*\.jpg$',
-            'uploader': 'SUPERTELO',
-            'duration': 31,
-            'timestamp': 1275937857,
-            'upload_date': '20100607',
+            # 'uploader': 'SUPERTELO',
+            'duration': 463,
+            'timestamp': 1438031994,
+            'upload_date': '20150727',
             'age_limit': 18,
             'like_count': int,
             'dislike_count': int,
@@ -76,9 +77,10 @@ class TwentyFourVideoIE(InfoExtractor):
             'http://%s/video/view/%s' % (host, video_id), video_id)
 
         title = self._og_search_title(webpage)
-        description = self._html_search_regex(
+        description = (self._html_search_regex(
             r'<(p|span)[^>]+itemprop="description"[^>]*>(?P<description>[^<]+)</\1>',
-            webpage, 'description', fatal=False, group='description')
+            webpage, 'description', default=None, group='description')
+            or self._og_search_description(webpage))
         thumbnail = self._og_search_thumbnail(webpage)
         duration = int_or_none(self._og_search_property(
             'duration', webpage, 'duration', fatal=False))
@@ -86,36 +88,50 @@ class TwentyFourVideoIE(InfoExtractor):
             r'<time[^>]+\bdatetime="([^"]+)"[^>]+itemprop="uploadDate"',
             webpage, 'upload date', fatal=False))
 
-        uploader = self._html_search_regex(
-            r'class="video-uploaded"[^>]*>\s*<a href="/jsecUser/movies/[^"]+"[^>]*>([^<]+)</a>',
-            webpage, 'uploader', fatal=False)
+        url = self._html_search_meta('ya:ovs:content_url', webpage, default=None)
+        if url:
+            formats = [{ 'url': url }]
+            uploader = None
+            view_count = int_or_none(self._html_search_meta('ya:ovs:views_total', webpage, default=None))
+            comment_count = int_or_none(self._html_search_meta('ya:ovs:comments', webpage, default=None))
+            like_count = int_or_none(self._html_search_meta('ya:ovs:likes', webpage, default=None))
+            like_count = int_or_none(self._html_search_meta('ya:ovs:likes', webpage, default=None))
+            dislike_count = int_or_none(self._html_search_meta('ya:ovs:dislikes', webpage, default=None))
+            age_limit = self._family_friendly_search(webpage) 
+            if age_limit is None:
+                age_limit = 18
+        else:
+            uploader = self._html_search_regex(
+                r'class="video-uploaded"[^>]*>\s*<a href="/jsecUser/movies/[^"]+"[^>]*>([^<]+)</a>',
+                webpage, 'uploader', fatal=False)
+            view_count = int_or_none(self._html_search_regex(
+                r'<span class="video-views">(\d+) просмотр',
+                webpage, 'view count', fatal=False))
+            comment_count = int_or_none(self._html_search_regex(
+                r'<a[^>]+href="#tab-comments"[^>]*>(\d+) комментари',
+                webpage, 'comment count', default=None))
 
-        view_count = int_or_none(self._html_search_regex(
-            r'<span class="video-views">(\d+) просмотр',
-            webpage, 'view count', fatal=False))
-        comment_count = int_or_none(self._html_search_regex(
-            r'<a[^>]+href="#tab-comments"[^>]*>(\d+) комментари',
-            webpage, 'comment count', default=None))
+            # Sets some cookies
+            self._download_xml(
+                r'http://%s/video/xml/%s?mode=init' % (host, video_id),
+                video_id, 'Downloading init XML')
 
-        # Sets some cookies
-        self._download_xml(
-            r'http://%s/video/xml/%s?mode=init' % (host, video_id),
-            video_id, 'Downloading init XML')
+            video_xml = self._download_xml(
+                'http://%s/video/xml/%s?mode=play' % (host, video_id),
+                video_id, 'Downloading video XML')
 
-        video_xml = self._download_xml(
-            'http://%s/video/xml/%s?mode=play' % (host, video_id),
-            video_id, 'Downloading video XML')
+            video = xpath_element(video_xml, './/video', 'video', fatal=True)
 
-        video = xpath_element(video_xml, './/video', 'video', fatal=True)
+            formats = [{
+                'url': xpath_attr(video, '', 'url', 'video URL', fatal=True),
+            }]
 
-        formats = [{
-            'url': xpath_attr(video, '', 'url', 'video URL', fatal=True),
-        }]
+            like_count = int_or_none(video.get('ratingPlus'))
+            dislike_count = int_or_none(video.get('ratingMinus'))
+            age_limit = 18 if video.get('adult') == 'true' else 0
 
-        like_count = int_or_none(video.get('ratingPlus'))
-        dislike_count = int_or_none(video.get('ratingMinus'))
-        age_limit = 18 if video.get('adult') == 'true' else 0
-
+        self._sort_formats(formats)
+        
         return {
             'id': video_id,
             'title': title,
