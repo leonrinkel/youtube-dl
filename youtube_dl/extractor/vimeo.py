@@ -42,6 +42,19 @@ class VimeoBaseInfoExtractor(InfoExtractor):
     _LOGIN_REQUIRED = False
     _LOGIN_URL = 'https://vimeo.com/log_in'
 
+    @staticmethod
+    # none of the standard library or utils.py routines does this
+    # join a path to a URL, removing query, fragment, with 1 / between
+    def _join_url(url, path):
+        url = compat_urlparse.urlunsplit(compat_urlparse.urlsplit(url)[:3] + (None, None))
+        if path:
+            if url.endswith('/') and path.startswith('/'):
+                url = url[:-1]
+            elif not url.endswith('/') and not path.startswith('/'):
+                url += '/'
+            return url + path
+        return url
+
     def _login(self):
         username, password = self._get_login_info()
         if username is None:
@@ -87,7 +100,7 @@ class VimeoBaseInfoExtractor(InfoExtractor):
             url = url.replace('http://', 'https://')
         self._set_vimeo_cookie('vuid', vuid)
         return self._download_webpage(
-            url + '/password', video_id, 'Verifying the password',
+            self._join_url(url, '/password'), video_id, 'Verifying the password',
             'Wrong password', data=urlencode_postdata({
                 'password': password,
                 'token': token,
@@ -567,7 +580,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
             'Content-Type': 'application/x-www-form-urlencoded',
         })
         checked = self._download_json(
-            url + '/check-password', video_id,
+            self._join_url(url, '/check-password'), video_id,
             'Verifying the password', data=data, headers=headers)
         if checked is False:
             raise ExtractorError('Wrong video password', expected=True)
