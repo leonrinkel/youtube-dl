@@ -77,7 +77,7 @@ class VimeoBaseInfoExtractor(InfoExtractor):
                 self._LOGIN_URL, None, 'Logging in',
                 data=urlencode_postdata(data), headers={
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Referer': self._LOGIN_URL,
+                    'Referer': compat_urlparse.urldefrag(self._LOGIN_URL),
                 })
         except ExtractorError as e:
             if isinstance(e.cause, compat_HTTPError) and e.cause.code == 418:
@@ -626,7 +626,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
         if 'http_headers' in data:
             headers.update(data['http_headers'])
         if 'Referer' not in headers:
-            headers['Referer'] = url
+            headers['Referer'] = compat_urlparse.urldefrag(url)
 
         mobj = re.match(self._VALID_URL, url).groupdict()
         video_id, unlisted_hash = mobj['id'], mobj.get('unlisted_hash')
