@@ -358,7 +358,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
             'expected_warnings': ['Unable to download JSON metadata'],
         },
         {
-            'url': 'http://vimeo.com/68375962',
+            'url': 'http://vimeo.com/68375962?loop=0',
             'md5': 'aaf896bdb7ddd6476df50007a0ac0ae7',
             'note': 'Video protected with password',
             'info_dict': {
@@ -492,7 +492,7 @@ class VimeoIE(VimeoBaseInfoExtractor):
             'skip': 'this page is no longer available.',
         },
         {
-            'url': 'http://player.vimeo.com/video/68375962',
+            'url': 'http://player.vimeo.com/video/68375962?loop=0',
             'md5': 'aaf896bdb7ddd6476df50007a0ac0ae7',
             'info_dict': {
                 'id': '68375962',
