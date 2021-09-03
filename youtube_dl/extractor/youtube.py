@@ -342,6 +342,10 @@ class YoutubeBaseInfoExtractor(InfoExtractor):
 
 class YoutubeIE(YoutubeBaseInfoExtractor):
     IE_DESC = 'YouTube.com'
+    _VIDEO_ID_RE = r'[0-9A-Za-z_-]{11}'
+    _CANONICAL_VIDEO_RE = r'https://www\.youtube\.com/watch\?v=%s' % _VIDEO_ID_RE
+    # TODO: remove this list once it's confirmed that Invidious sites all use
+    # the <link rel=alternate ...> mechanism (2021-08-31)
     _INVIDIOUS_SITES = (
         # invidious-redirect websites
         r'(?:www\.)?redirect\.invidious\.io',
@@ -431,10 +435,11 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                          |(?:www\.)?cleanvideosearch\.com/media/action/yt/watch\?videoId=
                          )
                      )?                                                       # all until now is optional -> you can pass the naked ID
-                     (?P<id>[0-9A-Za-z_-]{11})                                # here is it! the YouTube video ID
+                     (?P<id>%(video_id)s)                                     # here is it! the YouTube video ID
                      (?(1).+)?                                                # if we found the ID, everything can follow
                      $""" % {
         'invidious': '|'.join(_INVIDIOUS_SITES),
+        'video_id': _VIDEO_ID_RE,
     }
     _PLAYER_INFO_RE = (
         r'/s/player/(?P<id>[a-zA-Z0-9_-]{8,})/player',
@@ -1411,8 +1416,8 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             )
             (["\'])
                 (?P<url>(?:https?:)?//(?:www\.)?youtube(?:-nocookie)?\.com/
-                (?:embed|v|p)/[0-9A-Za-z_-]{11}.*?)
-            \1''', webpage)]
+                (?:embed|v|p)/%s.*?)
+            \1''' % YoutubeIE._VIDEO_ID_RE, webpage)]
 
         # lazyYT YouTube embed
         entries.extend(list(map(
@@ -1431,6 +1436,52 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
     def _extract_url(webpage):
         urls = YoutubeIE._extract_urls(webpage)
         return urls[0] if urls else None
+
+        # Invidious Instances (#29885) per https://github.com/iv-org/invidious/pull/1730
+        # Thanks: https://github.com/yt-dlp/yt-dlp/commit/df0c81513e0bb37986d00c532a5ad8cef31a24ea
+    @staticmethod
+    def _extract_invidious_urls(caller, webpage):
+        '''Return YT URL of video in an Invidious single video page
+           
+        Arguments:
+        caller -- an InfoExtractor
+        webpage -- compat_str text of the video page
+        '''
+        LINK_RE = r'<link\s[^>]*?%s[^>]*>'
+        # <link title="Invidious">
+        LINK_TITLE_RE = LINK_RE % r'title\s*=\s*(?P<q>"|\'|\b)Invidious(?P=q)'
+        if not caller._search_regex(LINK_TITLE_RE, webpage, 'Invidious title', default=None):
+            return
+
+        REL_ALT_RE = r'(?P<rel%(n)d>rel\s*=\s*(?P<q%(n)d>"|\'|\b)alternate(?P=q%(n)d))'
+        LINK_REL_ALT_RE = (
+            '(?x)' + LINK_RE %
+                       r'''
+                    %(rel_alt1)s                                      # rel="alternate"
+                    \s[^>]*?
+                           href\s*=\s*(?P<q0>"|\'|\b)              # href="invid URL"
+                               (?P<invid_url>%(canonical_video_url)s)(?P=q0)
+                           (?(rel1)|\s[^>]*?%(rel_alt2)s)          # rel="alternate" if following
+                       ''')
+        inv_url = caller._search_regex(
+            LINK_REL_ALT_RE 
+            % {
+                'rel_alt1': REL_ALT_RE % {'n': 1,},
+                'canonical_video_url': YoutubeIE._CANONICAL_VIDEO_RE,
+                'rel_alt2': REL_ALT_RE % {'n': 2,},
+            },
+            webpage, 'youtube link', default=None, group='invid_url')
+        if inv_url:
+            return inv_url
+        # perhaps it's a playlist?
+        inv_urls = re.findall(
+            r'''(?x)
+                <a\s[^>]*?
+                    href\s*=\s*(?P<q>"|\'|\b)
+                        /watch\?v=(%s)[^>]*
+                    (?P=q)
+            ''' % YoutubeIE._VIDEO_ID_RE, webpage)
+        return ['https://www.youtube.com/watch?v=%s' % x[1] for x in inv_urls or []]
 
     @classmethod
     def extract_id(cls, url):
@@ -2946,7 +2997,9 @@ class YoutubePlaylistIE(InfoExtractor):
 
 
 class YoutubeYtBeIE(InfoExtractor):
-    _VALID_URL = r'https?://youtu\.be/(?P<id>[0-9A-Za-z_-]{11})/*?.*?\blist=(?P<playlist_id>%(playlist_id)s)' % {'playlist_id': YoutubeBaseInfoExtractor._PLAYLIST_ID_RE}
+    _VALID_URL = (r'https?://youtu\.be/(?P<id>%(video_id)s)/*?.*?\blist=(?P<playlist_id>%(playlist_id)s)'
+                  % {'video_id': YoutubeIE._VIDEO_ID_RE,
+                     'playlist_id': YoutubeBaseInfoExtractor._PLAYLIST_ID_RE})
     _TESTS = [{
         'url': 'https://youtu.be/yeWKywCrFtk?list=PL2qgrgXsNUG5ig9cat4ohreBjYLAPC0J5',
         'info_dict': {

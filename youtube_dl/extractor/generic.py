@@ -10,6 +10,7 @@ from .common import InfoExtractor
 from .youtube import YoutubeIE
 from ..compat import (
     compat_etree_fromstring,
+    compat_parse_qs,
     compat_str,
     compat_urllib_parse_unquote,
     compat_urlparse,
@@ -2228,6 +2229,40 @@ class GenericIE(InfoExtractor):
             'url': 'https://phpbb3.x-tk.ru/bbcode-video-sibnet-t24.html',
             'only_matching': True,
         },
+        {
+            # Invidious video page with standard link to YT
+            'url': 'https://invidious-us.kavin.rocks/watch?v=15TvLqK29PU&list=IVPLxy40xZSaui6mZCrEUbd-MeMQD41-k6D',
+            'md5': '7a7ab808f6cee434361463161c046d25',
+            'info_dict': {
+                'id': '15TvLqK29PU',
+                'ext': 'mp4',
+                'title': 'md5:5130b529083cd4a692c4917beb059428',
+                'thumbnail': 're:https?://i.ytimg.com/.+',
+                'upload_date': '20120921',
+                'uploader': 'md5:42326ad7441688122b035175a51de385',
+                'uploader_id': 'UCuel_9Lg9WH9P5dFnXZ0zKQ',
+                'description': 'md5:541ed05829043b077d920029641ad831',
+                'duration': 366,
+            },
+            'params': {
+                # Cloudflare breaks HTTP if Chrome is mentioned in the UA (2021-08)
+                # NB test_download doesn't respect this option
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/6533.18.5 (KHTML, like Gecko) Safari/6533.18.5',
+            },
+        },
+        {
+            # Invidious playlist
+            'url': 'https://invidious-us.kavin.rocks/playlist?list=IVPLxy40xZSaui6mZCrEUbd-MeMQD41-k6D',
+            'info_dict': {
+                'id': 'IVPLxy40xZSaui6mZCrEUbd-MeMQD41-k6D',
+            },
+            'playlist_mincount': 2,
+            'params': {
+                # Cloudflare breaks HTTP if Chrome is mentioned in the UA (2021-08)
+                # NB test_download doesn't respect this option
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/6533.18.5 (KHTML, like Gecko) Safari/6533.18.5',
+            },
+        },
     ]
 
     def report_following_redirect(self, new_url):
@@ -2632,6 +2667,14 @@ class GenericIE(InfoExtractor):
         if youtube_urls:
             return self.playlist_from_matches(
                 youtube_urls, video_id, video_title, ie=YoutubeIE.ie_key())
+
+        # Invidious front-ends
+        youtube_urls = YoutubeIE._extract_invidious_urls(self, webpage)
+        if youtube_urls:
+            if isinstance(youtube_urls, compat_str):
+                return self.url_result(youtube_urls, YoutubeIE.ie_key())
+            video_id = compat_parse_qs(compat_urlparse.urlparse(url).query).get('list', [video_id])[0]
+            return self.playlist_from_matches(youtube_urls, playlist_id=video_id)
 
         matches = DailymotionIE._extract_urls(webpage)
         if matches:
